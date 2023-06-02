@@ -1,5 +1,4 @@
-﻿
-using System.Text.Json;
+﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -47,8 +46,8 @@ public class MainClass
 
 		//string text = Console.ReadLine();
 		string text = File.ReadAllText(@"C:\Users\Jan\source\repos\Optymalizacja Kombinatoryczna\Szeregowanie zadań\Metoda Ścieżki Krytycznej\Metoda Ścieżki Krytycznej\input1.json");
-		//var graph = JsonConvert.DeserializeObject<GraphData>(text);
-		var graph = JsonSerializer.Deserialize<GraphData>(text);
+		var graph = JsonConvert.DeserializeObject<GraphData>(text);
+		var graph1 = System.Text.Json.JsonSerializer.Deserialize<GraphData>(text);
 
 
 

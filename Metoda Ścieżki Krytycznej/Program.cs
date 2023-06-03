@@ -7,22 +7,15 @@ using System.Xml.Linq;
 
 public class MainClass
 {
-
-
 	public struct Dpv
 	{
 		public int distance;
 		public int previous;
 		public bool visited;
-	};
-	public struct DpvPlus
-	{
-		public int distance;
-		public int previous;
-		public int vertex;
 		public string label;
 		public int end;
 	};
+
 	public class Node
     {
         public string Label { get; set; }
@@ -43,89 +36,78 @@ public class MainClass
 
     public static void Main()
     {
-
 		//string text = Console.ReadLine();
 		string text = File.ReadAllText(@"C:\Users\Jan\source\repos\Optymalizacja Kombinatoryczna\Szeregowanie zadań\Metoda Ścieżki Krytycznej\Metoda Ścieżki Krytycznej\input1.json");
 		var graph = JsonConvert.DeserializeObject<GraphData>(text);
-		var graph1 = System.Text.Json.JsonSerializer.Deserialize<GraphData>(text);
 
-
-
-		var n = graph.Nodes.Count;
-        var matrix = new int[n,n];
-        for (int i = 0; i < n; i++)
-        {
-            for (int j = 0; j < n; j++)
-            {
-                matrix[i, j] = 0;
-            }
-        }
-        for (int i = 0; i < n; i++)
-        {
-            string label = graph.Nodes.ElementAt(i).Key;
-            int value = graph.Nodes.ElementAt(i).Value;
-            var neighbours = graph.Edges.Where(x => String.Equals(x[0], label)).ToList();
-            foreach (var neighbour in neighbours)
-            {
-                int j = graph.Nodes.Keys.ToList().IndexOf(neighbour[1]);
-                matrix[i, j] = value;
-            }
-        }
+		var matrix = CreateMatrix(graph);
+		var n = matrix.GetLength(0);
 		int[,] copiedMatrix = (int[,])matrix.Clone();
 		
+		//Sprawdzanie, czy graf zawiera cykl
 		var count = TopologicalSort(copiedMatrix).Count;
 		if (count!=n-1) Console.WriteLine("Błąd: Graf zawiera cykl, nie można wyznaczyć ścieżki krytycznej.");
 		else
 		{
-			var dpvArray = Dijkstra(matrix, 0);
-			var dpvList = dpvArray.ToList();
-			int v = 0;
-			int u = 0;
-
-			var dpvPlusArray = new DpvPlus[n];
-			for (int i = 0; i < n; i++)
-			{
-				dpvPlusArray[i].distance = dpvArray[i].distance;
-				dpvPlusArray[i].previous = dpvArray[i].previous;
-				dpvPlusArray[i].vertex = i;
-				dpvPlusArray[i].label = graph.Nodes.ElementAt(i).Key;
-				dpvPlusArray[i].end = dpvPlusArray[i].distance + graph.Nodes.ElementAt(i).Value;
-			}
-			var dpvPlusList = dpvPlusArray.ToList();
-			dpvPlusList.OrderBy(x => x.distance);
-
-
-
-			//PRINT OUTPUT
-			var tempDistance = int.MinValue;
-			Console.Write("Ścieżka krytyczna: ");
-			foreach (var item in dpvPlusList)
-			{
-				if (item.distance == tempDistance) continue;
-				tempDistance = item.distance;
-				var tempList = dpvPlusList.Where(a => a.distance == item.distance).OrderByDescending(a => a.distance);
-				Console.Write(tempList.ElementAt(0).label);
-				if (!item.Equals(dpvPlusList.Last())) Console.Write(" -> ");
-			}
-			Console.WriteLine();
-			Console.Write("Uszeregowanie zadań: ");
-			foreach (var item in dpvPlusList)
-			{
-				Console.Write(item.label + " (" + item.distance + "-" + item.end + ")");
-				if (!item.Equals(dpvPlusList.Last())) Console.Write(", ");
-			}
-			Console.WriteLine();
-			Console.WriteLine("Łączny czas wykonania: " + dpvPlusList.Last().end + " dni");
+			var dpvArray = ModifiedDijkstra(matrix, 0, graph);
+			PrintResult(dpvArray);
 		}
-        
+	}
 
- 
+
+	static void PrintResult(Dpv[] dpvArray)
+	{
+		var dpvList = dpvArray.ToList();
+		dpvList.OrderBy(x => x.distance);
+		var tempDistance = int.MinValue;
+		Console.Write("Ścieżka krytyczna: ");
+		foreach (var item in dpvList)
+		{
+			if (item.distance == tempDistance) continue;
+			tempDistance = item.distance;
+			var tempList = dpvList.Where(a => a.distance == item.distance).OrderByDescending(a => a.distance);
+			Console.Write(tempList.ElementAt(0).label);
+			if (!item.Equals(dpvList.Last())) Console.Write(" -> ");
+		}
+		Console.WriteLine();
+		Console.Write("Uszeregowanie zadań: ");
+		foreach (var item in dpvList)
+		{
+			Console.Write(item.label + " (" + item.distance + "-" + item.end + ")");
+			if (!item.Equals(dpvList.Last())) Console.Write(", ");
+		}
+		Console.WriteLine();
+		Console.WriteLine("Łączny czas wykonania: " + dpvList.Last().end + " dni");
+	}
+	static int[,] CreateMatrix(GraphData graph)
+	{
+		var n = graph.Nodes.Count;
+		var matrix = new int[n, n];
+		for (int i = 0; i < n; i++)
+		{
+			for (int j = 0; j < n; j++)
+			{
+				matrix[i, j] = 0;
+			}
+		}
+		for (int i = 0; i < n; i++)
+		{
+			string label = graph.Nodes.ElementAt(i).Key;
+			int value = graph.Nodes.ElementAt(i).Value;
+			var neighbours = graph.Edges.Where(x => String.Equals(x[0], label)).ToList();
+			foreach (var neighbour in neighbours)
+			{
+				int j = graph.Nodes.Keys.ToList().IndexOf(neighbour[1]);
+				matrix[i, j] = value;
+			}
+		}
+		return matrix;
 	}
 	static List<int> TopologicalSort(int[,] matrix)
 	{
 		var n = matrix.GetLength(0);
 		var L = new List<int>();
-		var S = FindVertexesNoInEdge(matrix);
+		var S = FindVertexesWithNoPrevious(matrix);
 		while (S.Any())
 		{
 			for(int i=0; i < n; i++)
@@ -133,12 +115,13 @@ public class MainClass
 				matrix[S[0], i] = 0;
 			}
 			L.Add(S[0]);
-			S = FindVertexesNoInEdge(matrix);
+			S = FindVertexesWithNoPrevious(matrix);
 
 		}
 		return L;
 	}
-	static List<int> FindVertexesNoInEdge(int[,] matrix)
+	//Find vertexes with no incoming edges
+	static List<int> FindVertexesWithNoPrevious(int[,] matrix)
 	{
 		var n = matrix.GetLength(0);
 		var S = new List<int>();
@@ -156,7 +139,7 @@ public class MainClass
 		return S;
 	}
 
-	static Dpv[] Dijkstra(int[,] matrix, int v)
+	static Dpv[] ModifiedDijkstra(int[,] matrix, int v, GraphData graph)
 	{
 		v = 0;
 		var n = matrix.GetLength(0);
@@ -166,6 +149,8 @@ public class MainClass
 			dpvArray[i].distance = (i == v) ? 0 : int.MinValue;
 			dpvArray[i].previous = -1;
 			dpvArray[i].visited = false;
+			dpvArray[i].label = graph.Nodes.ElementAt(i).Key;
+			dpvArray[i].end = dpvArray[i].distance + graph.Nodes.ElementAt(i).Value;
 		}
 		int u = v;
 		while (u != -1)
@@ -177,6 +162,7 @@ public class MainClass
 				{
 					dpvArray[i].distance = dpvArray[u].distance + matrix[u, i];
 					dpvArray[i].previous = u;
+					dpvArray[i].end = dpvArray[i].distance + graph.Nodes.ElementAt(i).Value;
 				}
 			}
 			u = FindMax(ref dpvArray, matrix);

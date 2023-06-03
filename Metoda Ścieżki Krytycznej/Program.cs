@@ -13,6 +13,7 @@ public class MainClass
 		public int previous;
 		public bool visited;
 		public string label;
+		public int u;
 		public int end;
 	};
 
@@ -59,16 +60,25 @@ public class MainClass
 	{
 		var dpvList = dpvArray.ToList();
 		dpvList.OrderBy(x => x.distance);
-		var tempDistance = int.MinValue;
-		Console.Write("Ścieżka krytyczna: ");
-		foreach (var item in dpvList)
+
+		var stack = new Stack<string>();
+		var v = dpvList.OrderByDescending(x => x.end).FirstOrDefault();
+		stack.Push(v.label);
+		var previous = v.previous;
+		while (previous != -1)
 		{
-			if (item.distance == tempDistance) continue;
-			tempDistance = item.distance;
-			var tempList = dpvList.Where(a => a.distance == item.distance).OrderByDescending(a => a.distance);
-			Console.Write(tempList.ElementAt(0).label);
-			if (!item.Equals(dpvList.Last())) Console.Write(" -> ");
+			v = dpvList.FirstOrDefault(x => x.u == previous);
+			previous= v.previous;
+			stack.Push(v.label);
 		}
+		Console.Write("Ścieżka krytyczna: ");
+		while (stack.Count > 0)
+		{
+			var label = stack.Pop();
+			Console.Write(label);
+			if (stack.Any()) Console.Write(" -> ");
+		}
+	
 		Console.WriteLine();
 		Console.Write("Uszeregowanie zadań: ");
 		foreach (var item in dpvList)
@@ -151,6 +161,7 @@ public class MainClass
 			dpvArray[i].visited = false;
 			dpvArray[i].label = graph.Nodes.ElementAt(i).Key;
 			dpvArray[i].end = dpvArray[i].distance + graph.Nodes.ElementAt(i).Value;
+			dpvArray[i].u = i;
 		}
 		int u = v;
 		while (u != -1)
